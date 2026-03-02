@@ -147,20 +147,128 @@ class SessionStateReader:
         """Extract project-like items from general content."""
         projects = []
         
-        # Look for bold text that might be project names
-        bold_pattern = r'\*\*([^*]+)\*\*'
-        bold_matches = re.findall(bold_pattern, content)
+        # Look for project sections: ## [EMOJI] STATUS: Project Name
+        project_pattern = r'^##\s+([✅⏸️🔄⚠️🔴🟢🟡])\s+(\w+):\s*(.+)$'
+        matches = re.finditer(project_pattern, content, re.MULTILINE)
         
-        for match in bold_matches[:3]:  # Limit to first 3
-            if len(match.strip()) > 3 and len(match.strip()) < 30:
+        for match in matches:
+            emoji = match.group(1)
+            status_text = match.group(2)
+            project_info = match.group(3).strip()
+            
+            # Extract project name (before any parenthetical, newline, or date marker)
+            name_match = re.match(r'^([^(\n]+?)(?:\s*[-—]\s|\s*\(|\s*$)', project_info)
+            if name_match:
+                name = name_match.group(1).strip()
+                
+                # Determine health and status from emoji and status text
+                health, status = self._parse_project_indicators(emoji, status_text)
+                
+                # Find the project section content
+                section_start = match.end()
+                next_section = re.search(r'^##\s', content[section_start:], re.MULTILINE)
+                if next_section:
+                    section_content = content[section_start:section_start + next_section.start()]
+                else:
+                    section_content = content[section_start:]
+                
+                # Extract date if available
+                last_update = self._extract_date(section_content)
+                
                 projects.append(Project(
-                    name=match.strip(),
-                    health=0.7,  # Default health
-                    status="unknown",
-                    last_update=datetime.now()
+                    name=name,
+                    health=health,
+                    status=status,
+                    last_update=last_update
                 ))
         
+        # Also look for Current Status section with project statuses
+        current_status = self._find_section(content, ["current status"])
+        if current_status:
+            # Look for status lines: **STATUS:** Project Name
+            status_pattern = r'\*\*(.+?):\*\*\s*(.+?)(?:\n|$)'
+            status_matches = re.finditer(status_pattern, current_status)
+            for match in status_matches:
+                status_text = match.group(1).strip()
+                project_info = match.group(2).strip()
+                
+                # Extract project name
+                name_match = re.match(r'^([^—-]+)', project_info)
+                if name_match:
+                    name = name_match.group(1).strip()
+                    health, status = self._parse_status_indicator(status_text)
+                    
+                    # Check if project already exists
+                    if not any(p.name == name for p in projects):
+                        projects.append(Project(
+                            name=name,
+                            health=health,
+                            status=status,
+                            last_update=datetime.now()
+                        ))
+        
         return projects
+    
+    def _parse_project_indicators(self, emoji: str, status_text: str) -> tuple:
+        """Parse emoji and status to determine health and status."""
+        emoji_health = {
+            '✅': (1.0, 'completed'),
+            '🟢': (0.9, 'healthy'),
+            '⏸️': (0.5, 'stalled'),
+            '🔄': (0.7, 'in_progress'),
+            '⚠️': (0.4, 'warning'),
+            '🔴': (0.2, 'blocked'),
+            '🟡': (0.6, 'caution'),
+        }
+        
+        if emoji in emoji_health:
+            return emoji_health[emoji]
+        
+        # Fallback to status text
+        status_lower = status_text.lower()
+        if 'complete' in status_lower:
+            return (1.0, 'completed')
+        elif 'stall' in status_lower:
+            return (0.5, 'stalled')
+        elif 'active' in status_lower or 'progress' in status_lower:
+            return (0.8, 'active')
+        elif 'archive' in status_lower:
+            return (1.0, 'archived')
+        else:
+            return (0.7, status_lower)
+    
+    def _parse_status_indicator(self, status_text: str) -> tuple:
+        """Parse status text to health and status."""
+        status_lower = status_text.lower()
+        
+        if 'high priority' in status_lower:
+            return (0.8, 'active')
+        elif 'stalled' in status_lower:
+            return (0.3, 'stalled')
+        elif 'completed' in status_lower or 'done' in status_lower:
+            return (1.0, 'completed')
+        elif 'blocked' in status_lower:
+            return (0.2, 'blocked')
+        else:
+            return (0.7, 'unknown')
+    
+    def _extract_date(self, section_content: str) -> datetime:
+        """Extract date from section content."""
+        date_patterns = [
+            r'\*\*Date:\*\*\s*(\d{4}-\d{2}-\d{2})',
+            r'Date:\s*(\d{4}-\d{2}-\d{2})',
+            r'(\d{4}-\d{2}-\d{2})',
+        ]
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, section_content)
+            if match:
+                try:
+                    return datetime.strptime(match.group(1), '%Y-%m-%d')
+                except ValueError:
+                    continue
+        
+        return datetime.now()
     
     def _create_default_project(self, content: str) -> Project:
         """Create a default project based on file health."""
