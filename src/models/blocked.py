@@ -22,12 +22,12 @@ class BlockedItem:
     def priority_color(self) -> str:
         """Color based on priority."""
         colors = {
-            "critical": "red",
-            "high": "yellow", 
-            "medium": "blue",
-            "low": "green"
+            "critical": "text-error",
+            "high": "text-warning",
+            "medium": "text-primary",
+            "low": "text-success"
         }
-        return colors.get(self.priority, "white")
+        return colors.get(self.priority, "text-primary")
     
     @property
     def priority_icon(self) -> str:

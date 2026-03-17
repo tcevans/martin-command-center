@@ -20,11 +20,11 @@ class Project:
     def health_color(self) -> str:
         """Color based on health score."""
         if self.health >= 0.8:
-            return "green"
+            return "text-success"
         elif self.health >= 0.5:
-            return "yellow"
+            return "text-warning"
         else:
-            return "red"
+            return "text-error"
     
     @property
     def age_hours(self) -> int:

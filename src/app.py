@@ -17,6 +17,11 @@ class CommandCenterApp(App):
     """Main dashboard application."""
     
     CSS = """
+    /* Typography base */
+    Screen {
+        text-style: none;
+    }
+
     /* Main layout */
     #main-grid {
         layout: horizontal;
@@ -41,7 +46,7 @@ class CommandCenterApp(App):
     /* Panel styling */
     .panel {
         height: 1fr;
-        border: solid $panel-lighten-1;
+        border: solid $primary;
         padding: 1;
         margin-bottom: 1;
     }
@@ -61,15 +66,15 @@ class CommandCenterApp(App):
     }
     
     .error {
-        color: red;
+        color: $error;
     }
     
     .success {
-        color: green;
+        color: $success;
     }
     
     .warning {
-        color: yellow;
+        color: $warning;
     }
     """
     
@@ -125,7 +130,7 @@ class CommandCenterApp(App):
             agent_panel.update(agent_text)
             agent_panel.remove_class("loading error")
         else:
-            agent_panel.update("[dim]No active agents[/dim]")
+            agent_panel.update("[text-muted]No active agents[/text-muted]")
             agent_panel.remove_class("loading")
             agent_panel.add_class("error")
         
@@ -136,7 +141,7 @@ class CommandCenterApp(App):
             project_panel.update(project_text)
             project_panel.remove_class("loading error")
         else:
-            project_panel.update("[dim]No project data available[/dim]")
+            project_panel.update("[text-muted]No project data available[/text-muted]")
             project_panel.remove_class("loading")
             project_panel.add_class("error")
         
@@ -147,7 +152,7 @@ class CommandCenterApp(App):
             blocked_panel.update(blocked_text)
             blocked_panel.remove_class("loading error")
         else:
-            blocked_panel.update("[dim]No blocked items[/dim]")
+            blocked_panel.update("[text-muted]No blocked items[/text-muted]")
             blocked_panel.remove_class("loading")
         
         # Update GitHub panel
@@ -157,31 +162,31 @@ class CommandCenterApp(App):
             github_panel.update(github_text)
             github_panel.remove_class("loading error")
         else:
-            github_panel.update("[dim]No GitHub activity[/dim]")
+            github_panel.update("[text-muted]No GitHub activity[/text-muted]")
             github_panel.remove_class("loading")
             github_panel.add_class("error")
     
     def _render_agents(self, agents) -> str:
         """Render agents panel."""
         lines = []
-        lines.append("[bold cyan]🤖 Active Agents[/bold cyan]")
+        lines.append("[bold text-secondary]🤖 Active Agents[/bold text-secondary]")
         lines.append("")
         
         for i, agent in enumerate(agents[:self.config.MAX_AGENTS_DISPLAY]):
             status_icon = "●" if agent.is_active else "○"
-            color = "green" if agent.is_active else "dim"
+            color = "text-success" if agent.is_active else "text-muted"
             age = agent.age_minutes
             lines.append(f"[{color}]{status_icon}[/{color}] {agent.agent_type} ({age}m)")
         
         if len(agents) > self.config.MAX_AGENTS_DISPLAY:
-            lines.append(f"[dim]... and {len(agents) - self.config.MAX_AGENTS_DISPLAY} more[/dim]")
+            lines.append(f"[text-muted]... and {len(agents) - self.config.MAX_AGENTS_DISPLAY} more[/text-muted]")
         
         return "\n".join(lines)
     
     def _render_projects(self, projects) -> str:
         """Render projects panel."""
         lines = []
-        lines.append("[bold cyan]📊 Project Health[/bold cyan]")
+        lines.append("[bold text-secondary]📊 Project Health[/bold text-secondary]")
         lines.append("")
         
         for project in projects[:5]:  # Show top 5 projects
@@ -194,7 +199,7 @@ class CommandCenterApp(App):
     def _render_blocked(self, blocked) -> str:
         """Render blocked panel."""
         lines = []
-        lines.append("[bold cyan]🚧 Blocked Items[/bold cyan]")
+        lines.append("[bold text-secondary]🚧 Blocked Items[/bold text-secondary]")
         lines.append("")
         
         for item in blocked[:self.config.MAX_BLOCKED_DISPLAY]:
@@ -208,7 +213,7 @@ class CommandCenterApp(App):
     def _render_github(self, events) -> str:
         """Render GitHub panel."""
         lines = []
-        lines.append("[bold cyan]🐙 GitHub Activity[/bold cyan]")
+        lines.append("[bold text-secondary]🐙 GitHub Activity[/bold text-secondary]")
         lines.append("")
         
         for event in events[:self.config.MAX_EVENTS_DISPLAY]:
@@ -223,7 +228,7 @@ class CommandCenterApp(App):
         """Update status bar."""
         status_bar = self.query_one("#status-bar", Static)
         if error:
-            status_bar.update(f"[red]❌ {message}[/red]")
+            status_bar.update(f"[text-error]❌ {message}[/text-error]")
         else:
             status_bar.update(message)
 
