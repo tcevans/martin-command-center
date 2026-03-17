@@ -8,10 +8,12 @@ from datetime import datetime
 try:
     from .config import Config
     from .data.fetcher import DataFetcher
+    from .ui.widgets.github import GitHubFeedWidget
 except ImportError:
     # Handle direct module execution
     from config import Config
     from data.fetcher import DataFetcher
+    from ui.widgets.github import GitHubFeedWidget
 
 class CommandCenterApp(App):
     """Main dashboard application."""
@@ -92,7 +94,7 @@ class CommandCenterApp(App):
                 id="center-col"
             ),
             Vertical(
-                Static("GitHub Panel Loading...", id="github-panel", classes="panel loading"),
+                GitHubFeedWidget(id="github-panel", classes="panel loading"),
                 id="right-col"
             ),
             id="main-grid"
@@ -151,15 +153,8 @@ class CommandCenterApp(App):
             blocked_panel.remove_class("loading")
         
         # Update GitHub panel
-        github_panel = self.query_one("#github-panel", Static)
-        if data.github:
-            github_text = self._render_github(data.github)
-            github_panel.update(github_text)
-            github_panel.remove_class("loading error")
-        else:
-            github_panel.update("[dim]No GitHub activity[/dim]")
-            github_panel.remove_class("loading")
-            github_panel.add_class("error")
+        github_panel = self.query_one("#github-panel", GitHubFeedWidget)
+        github_panel.update_events(data.github)
     
     def _render_agents(self, agents) -> str:
         """Render agents panel."""
@@ -202,20 +197,6 @@ class CommandCenterApp(App):
             color = item.priority_color
             days = item.age_days
             lines.append(f"[{color}]{icon}[/{color}] {item.display_description} ({days}d)")
-        
-        return "\n".join(lines)
-    
-    def _render_github(self, events) -> str:
-        """Render GitHub panel."""
-        lines = []
-        lines.append("[bold cyan]🐙 GitHub Activity[/bold cyan]")
-        lines.append("")
-        
-        for event in events[:self.config.MAX_EVENTS_DISPLAY]:
-            icon = event.status_icon
-            color = event.status_color
-            age = event.age_hours
-            lines.append(f"[{color}]{icon}[/{color}] {event.display_title} ({age}h)")
         
         return "\n".join(lines)
     
