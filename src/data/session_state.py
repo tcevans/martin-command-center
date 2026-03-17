@@ -114,6 +114,35 @@ class SessionStateReader:
         
         return ""
     
+    def _extract_build_status(self, content: str) -> str:
+        """Extract build status from content."""
+        match = re.search(r'(?i)build\s*status\s*:\s*(\w+)', content)
+        if match:
+            return match.group(1).lower()
+
+        if re.search(r'(?i)build\s*(passing|success|ok)', content):
+            return 'passing'
+        elif re.search(r'(?i)build\s*(failing|error|broken)', content):
+            return 'failing'
+
+        return 'unknown'
+
+    def _extract_test_coverage(self, content: str) -> str:
+        """Extract test coverage from content."""
+        match = re.search(r'(?i)(?:test\s*)?coverage\s*:\s*(\d+(?:\.\d+)?%?)', content)
+        if match:
+            return match.group(1)
+
+        return 'unknown'
+
+    def _extract_deployment_status(self, content: str) -> str:
+        """Extract deployment status from content."""
+        match = re.search(r'(?i)deployment(?:s)?(?:\s*status)?\s*:\s*([^\n]+)', content)
+        if match:
+            return match.group(1).strip()
+
+        return 'unknown'
+
     def _parse_projects(self, section_content: str) -> List[Project]:
         """Parse projects from a section."""
         projects = []
@@ -138,7 +167,10 @@ class SessionStateReader:
                     name=name,
                     health=health,
                     status=status,
-                    last_update=datetime.now()  # Assume current time
+                    last_update=datetime.now(),  # Assume current time
+                    build_status=self._extract_build_status(health_info),
+                    test_coverage=self._extract_test_coverage(health_info),
+                    deployment_status=self._extract_deployment_status(health_info)
                 ))
         
         return projects
@@ -179,7 +211,10 @@ class SessionStateReader:
                     name=name,
                     health=health,
                     status=status,
-                    last_update=last_update
+                    last_update=last_update,
+                    build_status=self._extract_build_status(section_content),
+                    test_coverage=self._extract_test_coverage(section_content),
+                    deployment_status=self._extract_deployment_status(section_content)
                 ))
         
         # Also look for Current Status section with project statuses
@@ -204,7 +239,10 @@ class SessionStateReader:
                             name=name,
                             health=health,
                             status=status,
-                            last_update=datetime.now()
+                            last_update=datetime.now(),
+                            build_status=self._extract_build_status(project_info),
+                            test_coverage=self._extract_test_coverage(project_info),
+                            deployment_status=self._extract_deployment_status(project_info)
                         ))
         
         return projects
@@ -296,9 +334,27 @@ class SessionStateReader:
             name="Default Workspace",
             health=health,
             status="healthy" if health > 0.7 else "warning" if health > 0.4 else "blocked",
-            last_update=datetime.now()
+            last_update=datetime.now(),
+            build_status=self._extract_build_status(content),
+            test_coverage=self._extract_test_coverage(content),
+            deployment_status=self._extract_deployment_status(content)
         )
     
+    def _extract_description(self, line: str) -> str:
+        """Extract description from a blocked line."""
+        # Clean up bullet points
+        line = re.sub(r'^[-*+]\s*', '', line).strip()
+        # Remove blocked indicator
+        line = re.sub(r'\s*\b(blocked by|depends on|waiting for)\b.*$', '', line, flags=re.IGNORECASE).strip()
+        return line if line else "Unknown task"
+
+    def _extract_blocked_reason(self, line: str) -> str:
+        """Extract reason from a blocked line."""
+        reason_match = re.search(r'\b(blocked by|depends on|waiting for)\s*(.+)', line, re.IGNORECASE)
+        if reason_match:
+            return reason_match.group(2).strip()
+        return "Unknown dependency"
+
     def _parse_blocked_items(self, section_content: str) -> List[BlockedItem]:
         """Parse blocked items from a section."""
         blocked_items = []

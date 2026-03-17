@@ -10,6 +10,9 @@ class Project:
     status: str          # "healthy", "warning", "blocked", "unknown"
     blocked_count: int = 0
     last_update: Optional[datetime] = None
+    build_status: str = "unknown"
+    test_coverage: str = "unknown"
+    deployment_status: str = "unknown"
     
     @property
     def health_percentage(self) -> int:

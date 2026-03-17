@@ -188,6 +188,21 @@ class CommandCenterApp(App):
             health_bar = "█" * int(project.health * 10) + "░" * (10 - int(project.health * 10))
             color = project.health_color
             lines.append(f"[{color}]{health_bar}[/{color}] {project.name[:20]}")
+
+            # Format build status
+            build_color = "green" if project.build_status == "passing" else "red" if project.build_status == "failing" else "yellow"
+            build_icon = "✅" if project.build_status == "passing" else "❌" if project.build_status == "failing" else "❓"
+
+            # Additional metrics
+            metrics = []
+            metrics.append(f"Build: [{build_color}]{build_icon} {project.build_status}[/{build_color}]")
+            if project.test_coverage != "unknown":
+                metrics.append(f"Coverage: [cyan]{project.test_coverage}[/cyan]")
+            if project.deployment_status != "unknown":
+                metrics.append(f"Deploy: [magenta]{project.deployment_status}[/magenta]")
+
+            lines.append("  " + " | ".join(metrics))
+            lines.append("")
         
         return "\n".join(lines)
     
