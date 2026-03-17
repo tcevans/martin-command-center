@@ -16,6 +16,11 @@ except ImportError:
 class CommandCenterApp(App):
     """Main dashboard application."""
     
+    BINDINGS = [
+        ("p", "toggle_auto_refresh", "Pause/Resume Auto-Refresh"),
+        ("r", "refresh_all_manual", "Refresh All Now"),
+    ]
+
     CSS = """
     /* Main layout */
     #main-grid {
@@ -78,6 +83,10 @@ class CommandCenterApp(App):
         self.config = Config()
         self.data_fetcher = DataFetcher(self.config)
         self.last_refresh = None
+        self.agent_timer = None
+        self.project_timer = None
+        self.blocked_timer = None
+        self.github_timer = None
     
     def compose(self) -> ComposeResult:
         """Create all panels and widgets."""
@@ -101,65 +110,133 @@ class CommandCenterApp(App):
     
     def on_mount(self) -> None:
         """Start timer and initial data fetch."""
-        self.set_interval(self.config.REFRESH_INTERVAL, self.refresh_all)
+        self.agent_timer = self.set_interval(self.config.REFRESH_INTERVAL_AGENTS, self.refresh_agents, pause=not self.config.AUTO_REFRESH_ENABLED)
+        self.project_timer = self.set_interval(self.config.REFRESH_INTERVAL_PROJECTS, self.refresh_projects, pause=not self.config.AUTO_REFRESH_ENABLED)
+        self.blocked_timer = self.set_interval(self.config.REFRESH_INTERVAL_BLOCKED, self.refresh_blocked, pause=not self.config.AUTO_REFRESH_ENABLED)
+        self.github_timer = self.set_interval(self.config.REFRESH_INTERVAL_GITHUB, self.refresh_github, pause=not self.config.AUTO_REFRESH_ENABLED)
         self.refresh_all()  # Initial fetch
+
+    def action_toggle_auto_refresh(self) -> None:
+        """Toggle auto-refresh state."""
+        self.config.AUTO_REFRESH_ENABLED = not self.config.AUTO_REFRESH_ENABLED
+        if self.config.AUTO_REFRESH_ENABLED:
+            if self.agent_timer: self.agent_timer.resume()
+            if self.project_timer: self.project_timer.resume()
+            if self.blocked_timer: self.blocked_timer.resume()
+            if self.github_timer: self.github_timer.resume()
+        else:
+            if self.agent_timer: self.agent_timer.pause()
+            if self.project_timer: self.project_timer.pause()
+            if self.blocked_timer: self.blocked_timer.pause()
+            if self.github_timer: self.github_timer.pause()
+        self._update_refresh_time()
+
+    def action_refresh_all_manual(self) -> None:
+        """Manually trigger a full refresh."""
+        self.refresh_all()
     
     @work(exclusive=True)
     async def refresh_all(self) -> None:
         """Fetch all data and update UI."""
+        self.refresh_agents()
+        self.refresh_projects()
+        self.refresh_blocked()
+        self.refresh_github()
+
+    @work(exclusive=True)
+    async def refresh_agents(self) -> None:
         try:
-            self.update_status("Refreshing data...")
-            data = await self.data_fetcher.fetch_all()
-            self.update_panels(data)
-            self.last_refresh = datetime.now()
-            self.update_status(f"Last updated: {self.last_refresh.strftime('%H:%M:%S')} | Refresh: {self.config.REFRESH_INTERVAL}s | ● Connected")
+            agents = await self.data_fetcher.fetch_agents()
+            self.update_agent_panel(agents)
+            self._update_refresh_time()
         except Exception as e:
-            self.update_status(f"Error: {str(e)}", error=True)
-    
-    def update_panels(self, data) -> None:
-        """Push data to individual panels."""
-        # Update agent panel
+            self.update_status(f"Error fetching agents: {str(e)}", error=True)
+
+    @work(exclusive=True)
+    async def refresh_projects(self) -> None:
+        try:
+            projects = await self.data_fetcher.fetch_projects()
+            self.update_project_panel(projects)
+            self._update_refresh_time()
+        except Exception as e:
+            self.update_status(f"Error fetching projects: {str(e)}", error=True)
+
+    @work(exclusive=True)
+    async def refresh_blocked(self) -> None:
+        try:
+            blocked = await self.data_fetcher.fetch_blocked()
+            self.update_blocked_panel(blocked)
+            self._update_refresh_time()
+        except Exception as e:
+            self.update_status(f"Error fetching blocked items: {str(e)}", error=True)
+
+    @work(exclusive=True)
+    async def refresh_github(self) -> None:
+        try:
+            github = await self.data_fetcher.fetch_github()
+            self.update_github_panel(github)
+            self._update_refresh_time()
+        except Exception as e:
+            self.update_status(f"Error fetching github data: {str(e)}", error=True)
+
+    def _update_refresh_time(self) -> None:
+        self.last_refresh = datetime.now()
+        status = "Active" if self.config.AUTO_REFRESH_ENABLED else "Paused"
+        self.update_status(f"Last updated: {self.last_refresh.strftime('%H:%M:%S')} | Auto-Refresh: {status} | ● Connected")
+
+    def update_agent_panel(self, agents) -> None:
+        """Update agent panel."""
         agent_panel = self.query_one("#agent-panel", Static)
-        if data.agents:
-            agent_text = self._render_agents(data.agents)
+        if agents:
+            agent_text = self._render_agents(agents)
             agent_panel.update(agent_text)
             agent_panel.remove_class("loading error")
         else:
             agent_panel.update("[dim]No active agents[/dim]")
             agent_panel.remove_class("loading")
             agent_panel.add_class("error")
-        
-        # Update project panel
+
+    def update_project_panel(self, projects) -> None:
+        """Update project panel."""
         project_panel = self.query_one("#project-panel", Static)
-        if data.projects:
-            project_text = self._render_projects(data.projects)
+        if projects:
+            project_text = self._render_projects(projects)
             project_panel.update(project_text)
             project_panel.remove_class("loading error")
         else:
             project_panel.update("[dim]No project data available[/dim]")
             project_panel.remove_class("loading")
             project_panel.add_class("error")
-        
-        # Update blocked panel
+
+    def update_blocked_panel(self, blocked) -> None:
+        """Update blocked panel."""
         blocked_panel = self.query_one("#blocked-panel", Static)
-        if data.blocked:
-            blocked_text = self._render_blocked(data.blocked)
+        if blocked:
+            blocked_text = self._render_blocked(blocked)
             blocked_panel.update(blocked_text)
             blocked_panel.remove_class("loading error")
         else:
             blocked_panel.update("[dim]No blocked items[/dim]")
             blocked_panel.remove_class("loading")
-        
-        # Update GitHub panel
+
+    def update_github_panel(self, github) -> None:
+        """Update GitHub panel."""
         github_panel = self.query_one("#github-panel", Static)
-        if data.github:
-            github_text = self._render_github(data.github)
+        if github:
+            github_text = self._render_github(github)
             github_panel.update(github_text)
             github_panel.remove_class("loading error")
         else:
             github_panel.update("[dim]No GitHub activity[/dim]")
             github_panel.remove_class("loading")
             github_panel.add_class("error")
+
+    def update_panels(self, data) -> None:
+        """Push data to individual panels."""
+        self.update_agent_panel(data.agents)
+        self.update_project_panel(data.projects)
+        self.update_blocked_panel(data.blocked)
+        self.update_github_panel(data.github)
     
     def _render_agents(self, agents) -> str:
         """Render agents panel."""

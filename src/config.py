@@ -7,7 +7,12 @@ class Config:
     """Dashboard configuration."""
     
     # Refresh
-    REFRESH_INTERVAL: int = 30  # seconds
+    REFRESH_INTERVAL: int = 30  # seconds (default/fallback)
+    REFRESH_INTERVAL_AGENTS: int = 30
+    REFRESH_INTERVAL_PROJECTS: int = 60
+    REFRESH_INTERVAL_BLOCKED: int = 60
+    REFRESH_INTERVAL_GITHUB: int = 120
+    AUTO_REFRESH_ENABLED: bool = True
     
     # Paths
     SESSION_STATE_PATH: Path = Path(
