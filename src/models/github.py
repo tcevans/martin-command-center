@@ -31,13 +31,13 @@ class GitHubEvent:
     def status_color(self) -> str:
         """Color based on status."""
         colors = {
-            "success": "green",
-            "failure": "red", 
-            "pending": "yellow",
-            "open": "blue",
-            "closed": "dim"
+            "success": "text-success",
+            "failure": "text-error",
+            "pending": "text-warning",
+            "open": "text-primary",
+            "closed": "text-muted"
         }
-        return colors.get(self.status, "white")
+        return colors.get(self.status, "text-primary")
     
     @property
     def age_hours(self) -> int:
