@@ -62,16 +62,20 @@ class CommandCenterApp(App):
         text-style: dim;
     }
     
+    .panel.error {
+        border: solid $error;
+    }
+
     .error {
-        color: red;
+        color: $error;
     }
     
     .success {
-        color: green;
+        color: $success;
     }
     
     .warning {
-        color: yellow;
+        color: $warning;
     }
     """
     
@@ -126,7 +130,11 @@ class CommandCenterApp(App):
         # Clear existing children
         agent_panel.remove_children()
 
-        if data.agents:
+        if data.agents_error:
+            agent_panel.mount(Static("[text-error]⚠️ Failed to load agents[/text-error]"))
+            agent_panel.remove_class("loading")
+            agent_panel.add_class("error")
+        elif data.agents:
             agent_panel.mount(Static("[bold cyan]🤖 Active Agents[/bold cyan]"))
             agent_panel.mount(Static(""))
 
@@ -136,43 +144,60 @@ class CommandCenterApp(App):
             if len(data.agents) > self.config.MAX_AGENTS_DISPLAY:
                 agent_panel.mount(Static(f"[dim]... and {len(data.agents) - self.config.MAX_AGENTS_DISPLAY} more[/dim]"))
 
-            agent_panel.remove_class("loading error")
+            agent_panel.remove_class("loading")
+            agent_panel.remove_class("error")
         else:
             agent_panel.mount(Static("[dim]No active agents[/dim]"))
             agent_panel.remove_class("loading")
-            agent_panel.add_class("error")
+            agent_panel.remove_class("error")
         
         # Update project panel
         project_panel = self.query_one("#project-panel", Static)
-        if data.projects:
+        if data.projects_error:
+            project_panel.update("[text-error]⚠️ Failed to load projects[/text-error]")
+            project_panel.remove_class("loading")
+            project_panel.add_class("error")
+        elif data.projects:
             project_text = self._render_projects(data.projects)
             project_panel.update(project_text)
-            project_panel.remove_class("loading error")
+            project_panel.remove_class("loading")
+            project_panel.remove_class("error")
         else:
             project_panel.update("[dim]No project data available[/dim]")
             project_panel.remove_class("loading")
-            project_panel.add_class("error")
+            project_panel.remove_class("error")
         
         # Update blocked panel
         blocked_panel = self.query_one("#blocked-panel", Static)
-        if data.blocked:
+        if data.blocked_error:
+            blocked_panel.update("[text-error]⚠️ Failed to load blocked items[/text-error]")
+            blocked_panel.remove_class("loading")
+            blocked_panel.add_class("error")
+        elif data.blocked:
             blocked_text = self._render_blocked(data.blocked)
             blocked_panel.update(blocked_text)
-            blocked_panel.remove_class("loading error")
+            blocked_panel.remove_class("loading")
+            blocked_panel.remove_class("error")
         else:
             blocked_panel.update("[dim]No blocked items[/dim]")
             blocked_panel.remove_class("loading")
+            blocked_panel.remove_class("error")
         
         # Update GitHub panel
         github_panel = self.query_one("#github-panel", Static)
-        if data.github:
+        if data.github_error:
+            github_panel.update("[text-error]⚠️ Failed to load GitHub activity[/text-error]")
+            github_panel.remove_class("loading")
+            github_panel.add_class("error")
+        elif data.github:
             github_text = self._render_github(data.github)
             github_panel.update(github_text)
-            github_panel.remove_class("loading error")
+            github_panel.remove_class("loading")
+            github_panel.remove_class("error")
         else:
             github_panel.update("[dim]No GitHub activity[/dim]")
             github_panel.remove_class("loading")
-            github_panel.add_class("error")
+            github_panel.remove_class("error")
     
     def _render_projects(self, projects) -> str:
         """Render projects panel."""
