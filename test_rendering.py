@@ -59,6 +59,20 @@ async def test_rendering():
         for project in data.projects[:5]:
             health_bar = "█" * int(project.health * 10) + "░" * (10 - int(project.health * 10))
             print(f"[{health_bar}] {project.name[:20]} {project.health_percentage}%")
+
+            # Format build status
+            build_icon = "✅" if project.build_status == "passing" else "❌" if project.build_status == "failing" else "❓"
+
+            # Additional metrics
+            metrics = []
+            metrics.append(f"Build: {build_icon} {project.build_status}")
+            if project.test_coverage != "unknown":
+                metrics.append(f"Coverage: {project.test_coverage}")
+            if project.deployment_status != "unknown":
+                metrics.append(f"Deploy: {project.deployment_status}")
+
+            print("  " + " | ".join(metrics))
+            print("")
     else:
         print("No project data")
     
