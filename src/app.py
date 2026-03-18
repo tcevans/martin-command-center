@@ -8,10 +8,12 @@ from datetime import datetime
 try:
     from .config import Config
     from .data.fetcher import DataFetcher
+    from .ui.widgets.agent_status import AgentStatusWidget
 except ImportError:
     # Handle direct module execution
     from config import Config
     from data.fetcher import DataFetcher
+    from ui.widgets.agent_status import AgentStatusWidget
 
 class CommandCenterApp(App):
     """Main dashboard application."""
@@ -83,7 +85,7 @@ class CommandCenterApp(App):
         """Create all panels and widgets."""
         yield Horizontal(
             Vertical(
-                Static("Agent Panel Loading...", id="agent-panel", classes="panel loading"),
+                Vertical(id="agent-panel", classes="panel loading"),
                 id="left-col"
             ),
             Vertical(
@@ -119,13 +121,24 @@ class CommandCenterApp(App):
     def update_panels(self, data) -> None:
         """Push data to individual panels."""
         # Update agent panel
-        agent_panel = self.query_one("#agent-panel", Static)
+        agent_panel = self.query_one("#agent-panel")
+
+        # Clear existing children
+        agent_panel.remove_children()
+
         if data.agents:
-            agent_text = self._render_agents(data.agents)
-            agent_panel.update(agent_text)
+            agent_panel.mount(Static("[bold cyan]🤖 Active Agents[/bold cyan]"))
+            agent_panel.mount(Static(""))
+
+            for agent in data.agents[:self.config.MAX_AGENTS_DISPLAY]:
+                agent_panel.mount(AgentStatusWidget(agent=agent))
+
+            if len(data.agents) > self.config.MAX_AGENTS_DISPLAY:
+                agent_panel.mount(Static(f"[dim]... and {len(data.agents) - self.config.MAX_AGENTS_DISPLAY} more[/dim]"))
+
             agent_panel.remove_class("loading error")
         else:
-            agent_panel.update("[dim]No active agents[/dim]")
+            agent_panel.mount(Static("[dim]No active agents[/dim]"))
             agent_panel.remove_class("loading")
             agent_panel.add_class("error")
         
@@ -160,23 +173,6 @@ class CommandCenterApp(App):
             github_panel.update("[dim]No GitHub activity[/dim]")
             github_panel.remove_class("loading")
             github_panel.add_class("error")
-    
-    def _render_agents(self, agents) -> str:
-        """Render agents panel."""
-        lines = []
-        lines.append("[bold cyan]🤖 Active Agents[/bold cyan]")
-        lines.append("")
-        
-        for i, agent in enumerate(agents[:self.config.MAX_AGENTS_DISPLAY]):
-            status_icon = "●" if agent.is_active else "○"
-            color = "green" if agent.is_active else "dim"
-            age = agent.age_minutes
-            lines.append(f"[{color}]{status_icon}[/{color}] {agent.agent_type} ({age}m)")
-        
-        if len(agents) > self.config.MAX_AGENTS_DISPLAY:
-            lines.append(f"[dim]... and {len(agents) - self.config.MAX_AGENTS_DISPLAY} more[/dim]")
-        
-        return "\n".join(lines)
     
     def _render_projects(self, projects) -> str:
         """Render projects panel."""
