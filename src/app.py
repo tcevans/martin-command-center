@@ -123,7 +123,8 @@ class CommandCenterApp(App):
         if data.agents:
             agent_text = self._render_agents(data.agents)
             agent_panel.update(agent_text)
-            agent_panel.remove_class("loading error")
+            agent_panel.remove_class("loading")
+            agent_panel.remove_class("error")
         else:
             agent_panel.update("[dim]No active agents[/dim]")
             agent_panel.remove_class("loading")
@@ -134,7 +135,8 @@ class CommandCenterApp(App):
         if data.projects:
             project_text = self._render_projects(data.projects)
             project_panel.update(project_text)
-            project_panel.remove_class("loading error")
+            project_panel.remove_class("loading")
+            project_panel.remove_class("error")
         else:
             project_panel.update("[dim]No project data available[/dim]")
             project_panel.remove_class("loading")
@@ -145,7 +147,8 @@ class CommandCenterApp(App):
         if data.blocked:
             blocked_text = self._render_blocked(data.blocked)
             blocked_panel.update(blocked_text)
-            blocked_panel.remove_class("loading error")
+            blocked_panel.remove_class("loading")
+            blocked_panel.remove_class("error")
         else:
             blocked_panel.update("[dim]No blocked items[/dim]")
             blocked_panel.remove_class("loading")
@@ -155,7 +158,8 @@ class CommandCenterApp(App):
         if data.github:
             github_text = self._render_github(data.github)
             github_panel.update(github_text)
-            github_panel.remove_class("loading error")
+            github_panel.remove_class("loading")
+            github_panel.remove_class("error")
         else:
             github_panel.update("[dim]No GitHub activity[/dim]")
             github_panel.remove_class("loading")
