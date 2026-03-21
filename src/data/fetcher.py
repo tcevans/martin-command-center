@@ -29,6 +29,10 @@ class DashboardData:
     projects: List[Project]
     github: List[GitHubEvent]
     blocked: List[BlockedItem]
+    agents_error: bool = False
+    projects_error: bool = False
+    github_error: bool = False
+    blocked_error: bool = False
 
 class DataFetcher:
     """Orchestrates data fetching from all sources."""
@@ -55,6 +59,11 @@ class DataFetcher:
         projects = results[1] if not isinstance(results[1], Exception) else []
         github = results[2] if not isinstance(results[2], Exception) else []
         blocked = results[3] if not isinstance(results[3], Exception) else []
+
+        agents_error = isinstance(results[0], Exception)
+        projects_error = isinstance(results[1], Exception)
+        github_error = isinstance(results[2], Exception)
+        blocked_error = isinstance(results[3], Exception)
         
         # Log any errors for debugging
         for i, result in enumerate(results):
@@ -62,7 +71,16 @@ class DataFetcher:
                 source_names = ["agents", "projects", "github", "blocked"]
                 print(f"Error fetching {source_names[i]}: {result}")
         
-        return DashboardData(agents, projects, github, blocked)
+        return DashboardData(
+            agents=agents,
+            projects=projects,
+            github=github,
+            blocked=blocked,
+            agents_error=agents_error,
+            projects_error=projects_error,
+            github_error=github_error,
+            blocked_error=blocked_error
+        )
     
     async def fetch_agents(self) -> List[Agent]:
         """Fetch only agent data."""
